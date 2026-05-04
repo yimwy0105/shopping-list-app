@@ -136,7 +136,8 @@
       return;
     }
     const checked = items.filter(i => i.checked).length;
-    countEl.textContent = `${checked}/${items.length} 완료`;
+    const remaining = items.length - checked;
+    countEl.textContent = `전체 ${items.length} | 완료 ${checked} | 남은 항목 ${remaining}`;
 
     listEl.innerHTML = items.map(item => `
       <li class="${item.checked ? 'checked' : ''}" data-id="${item.id}">
