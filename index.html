@@ -117,16 +117,27 @@
 </div>
 
 <script>
-  const STORAGE_KEY = 'shopping-list-data';
-  let items = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const SUPABASE_URL = 'https://ifxfjzzjjyuecixiohgt.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmeGZqenpqanl1ZWNpeGlvaGd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjk4NjQsImV4cCI6MjA5MzYwNTg2NH0.tCPnd_tgswyGdW8gEzHC7IuL-8WvTHgHp9hlBlsiQqE';
+  const API_BASE = `${SUPABASE_URL}/rest/v1/shopping_items`;
+  const HEADERS = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  };
+
+  let items = [];
 
   const listEl = document.getElementById('list');
   const countEl = document.getElementById('count');
   const input = document.getElementById('itemInput');
   const addBtn = document.getElementById('addBtn');
 
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  async function fetchItems() {
+    const res = await fetch(`${API_BASE}?order=created_at.asc`, { headers: HEADERS });
+    items = await res.json();
+    render();
   }
 
   function render() {
@@ -154,14 +165,42 @@
     return d.innerHTML;
   }
 
-  function addItem() {
+  async function addItem() {
     const text = input.value.trim();
     if (!text) return;
-    items.push({ id: Date.now(), text, checked: false });
+    const newItem = { id: Date.now(), text, checked: false };
     input.value = '';
-    save();
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(newItem)
+    });
+    const [created] = await res.json();
+    items.push(created);
     render();
     input.focus();
+  }
+
+  async function toggleItem(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const newChecked = !item.checked;
+    await fetch(`${API_BASE}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: HEADERS,
+      body: JSON.stringify({ checked: newChecked })
+    });
+    item.checked = newChecked;
+    render();
+  }
+
+  async function deleteItem(id) {
+    await fetch(`${API_BASE}?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: HEADERS
+    });
+    items = items.filter(i => i.id !== id);
+    render();
   }
 
   addBtn.addEventListener('click', addItem);
@@ -173,18 +212,13 @@
     const id = Number(li.dataset.id);
 
     if (e.target.matches('input[type="checkbox"]')) {
-      const item = items.find(i => i.id === id);
-      if (item) item.checked = !item.checked;
-      save();
-      render();
+      toggleItem(id);
     } else if (e.target.matches('.delete-btn')) {
-      items = items.filter(i => i.id !== id);
-      save();
-      render();
+      deleteItem(id);
     }
   });
 
-  render();
+  fetchItems();
 </script>
 </body>
 </html>
